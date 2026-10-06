@@ -1,8 +1,14 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import (
+    render,
+    redirect,
+    get_object_or_404
+)
+
 from django.contrib.auth.decorators import login_required
+
 from .models import Document
 from .utils import extract_pdf_text
-from django.shortcuts import get_object_or_404
+
 from chatbot.views import model
 
 
@@ -11,7 +17,7 @@ def documents_home(request):
 
     if request.method == "POST":
 
-        pdf = request.FILES.get("file")
+        pdf = request.FILES.get("pdf")
 
         if pdf:
 
@@ -38,7 +44,8 @@ def documents_home(request):
 @login_required
 def delete_document(request, doc_id):
 
-    document = Document.objects.get(
+    document = get_object_or_404(
+        Document,
         id=doc_id,
         user=request.user
     )
@@ -46,6 +53,8 @@ def delete_document(request, doc_id):
     document.delete()
 
     return redirect("/documents/")
+
+
 @login_required
 def pdf_summary(request, doc_id):
 
@@ -67,17 +76,23 @@ def pdf_summary(request, doc_id):
     {pdf_text}
     """
 
-    response = model.generate_content(
-        prompt
-    )
+    try:
 
-    summary = response.text
+        response = model.generate_content(
+            prompt
+        )
+
+        summary = response.text
+
+    except Exception as e:
+
+        summary = f"Error: {str(e)}"
 
     return render(
         request,
         "documents/summary.html",
         {
-            "summary": summary,
-            "document": document
+            "document": document,
+            "summary": summary
         }
     )
